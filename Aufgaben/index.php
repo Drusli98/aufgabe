@@ -89,10 +89,10 @@ $filme = [
 // - 'max_preis' (falls vorhanden) - maximaler Ticketpreis
 // - 'mindest_bewertung' (falls vorhanden)
 
-$genre_filter = $_GET['genre']??''; // TODO: Implementiere die $_GET Logik
-$max_dauer = 0; // TODO: Implementiere die $_GET Logik
-$max_preis = 0; // TODO: Implementiere die $_GET Logik
-$mindest_bewertung = 0; // TODO: Implementiere die $_GET Logik
+$genre_filter = isset($_GET['genre']) ? trim($_GET['genre']) : '';
+$max_dauer = (isset($_GET['max_dauer']) && $_GET['max_dauer'] !== '') ? (int)$_GET['max_dauer'] : 0;
+$max_preis = (isset($_GET['max_preis']) && $_GET['max_preis'] !== '') ? (float)$_GET['max_preis'] : 0.0;
+$mindest_bewertung = (isset($_GET['mindest_bewertung']) && $_GET['mindest_bewertung'] !== '') ? (int)$_GET['mindest_bewertung'] : 0;
 
 // TODO: Filtere das $filme Array basierend auf den GET-Parametern
 // Erstelle ein neues Array $gefilterte_filme
@@ -119,6 +119,30 @@ $mindest_bewertung = 0; // TODO: Implementiere die $_GET Logik
 // }
 
 $gefilterte_filme = []; // TODO: Implementiere die Filterlogik hier
+
+foreach ($filme as $film) {
+    $erfuellt_filter = true;
+
+    if ($genre_filter !== '' && $film['genre'] !== $genre_filter) {
+        $erfuellt_filter = false;
+    }
+
+    if ($max_dauer > 0 && $film['dauer'] > $max_dauer) {
+        $erfuellt_filter = false;
+    }
+
+    if ($max_preis > 0 && $film['preis'] > $max_preis) {
+        $erfuellt_filter = false;
+    }
+
+    if ($mindest_bewertung > 0 && $film['bewertung'] < $mindest_bewertung) {
+        $erfuellt_filter = false;
+    }
+
+    if ($erfuellt_filter) {
+        $gefilterte_filme[] = $film;
+    }
+}
 
 ?>
 
@@ -151,34 +175,79 @@ $gefilterte_filme = []; // TODO: Implementiere die Filterlogik hier
          - Füge einen "Alle Filter zurücksetzen" Button hinzu
         -->
 
+        <form method="GET">
+            <label>
+                Genre:
+                <select name="genre">
+                    <option value="" <?php echo $genre_filter === '' ? 'selected' : ''; ?>>Alle</option>
+                    <option value="Action" <?php echo $genre_filter === 'Action' ? 'selected' : ''; ?>>Action</option>
+                    <option value="Komödie" <?php echo $genre_filter === 'Komödie' ? 'selected' : ''; ?>>Komödie</option>
+                    <option value="Drama" <?php echo $genre_filter === 'Drama' ? 'selected' : ''; ?>>Drama</option>
+                    <option value="Horror" <?php echo $genre_filter === 'Horror' ? 'selected' : ''; ?>>Horror</option>
+                    <option value="Animation" <?php echo $genre_filter === 'Animation' ? 'selected' : ''; ?>>Animation</option>
+                </select>
+            </label>
+            <br>
+            <label>
+                Maximale Dauer (Min.):
+                <input type="number" name="max_dauer" value="<?php echo htmlspecialchars((string)$max_dauer, ENT_QUOTES); ?>" min="0" step="1">
+            </label>
+            <br>
+            <label>
+                Maximaler Preis (€):
+                <input type="number" name="max_preis" value="<?php echo htmlspecialchars((string)$max_preis, ENT_QUOTES); ?>" min="0" step="0.50">
+            </label>
+            <br>
+            <label>
+                Mindestbewertung:
+                <select name="mindest_bewertung">
+                    <?php for ($i = 0; $i <= 5; $i++): ?>
+                        <option value="<?php echo $i; ?>" <?php echo (int)$mindest_bewertung === $i ? 'selected' : ''; ?>><?php echo $i; ?></option>
+                    <?php endfor; ?>
+                </select>
+            </label>
+            <br>
+            <button type="submit">Filter anwenden</button>
+            <a href="<?php echo strtok($_SERVER['REQUEST_URI'], '?'); ?>">
+                <button type="button">Alle Filter zurücksetzen</button>
+            </a>
+        </form>
+
     </p>
 
     <p>
         <?php
         // TODO: Zeige die Anzahl der gefundenen Filme an
         // Beispiel: "Es wurden X Filme gefunden"
+        echo 'Es wurden ' . count($gefilterte_filme) . ' Filme gefunden';
         ?>
 
 
         <?php
         // TODO: Durchlaufe das $gefilterte_filme Array und zeige jeden Film an
-        // Verwende eine foreach-Schleife
-        //
-        // Für jeden Film sollen folgende Informationen angezeigt werden:
-        // - Titel des Films (als Überschrift h3)
-        // - Genre als farbiger Tag
-        // - Filmlänge (z.B. "Dauer: 120 Min.")
-        // - Altersfreigabe (z.B. "FSK: 12")
-        // - Ticketpreis (z.B. "9,50 €")
-        // - Bewertung als Sterne (★★★★☆)
+        if (!empty($gefilterte_filme)) {
+            foreach ($gefilterte_filme as $film) {
+                $sterne_voll = (int)$film['bewertung'];
+                $sterne_leer = 5 - $sterne_voll;
+                $sterne_text = str_repeat('★', $sterne_voll) . str_repeat('☆', $sterne_leer);
 
-        // TODO: Implementiere die Ausgabe hier
-
+                echo '<div style="margin:12px 0; padding:10px; border:1px solid #ddd; border-radius:6px;">';
+                echo '<h3 style="margin:0 0 8px;">' . htmlspecialchars($film['titel'], ENT_QUOTES) . '</h3>';
+                echo '<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#eef; color:#223; font-size:12px; margin-bottom:6px;">' . htmlspecialchars($film['genre'], ENT_QUOTES) . '</span>';
+                echo '<div>Dauer: ' . (int)$film['dauer'] . ' Min.</div>';
+                echo '<div>FSK: ' . htmlspecialchars($film['altersfreigabe'], ENT_QUOTES) . '</div>';
+                echo '<div>Preis: ' . number_format((float)$film['preis'], 2, ',', ' ') . ' €</div>';
+                echo '<div>Bewertung: ' . $sterne_text . '</div>';
+                echo '</div>';
+            }
+        }
         ?>
 
         <?php
         // TODO: Falls keine Filme gefunden wurden, zeige eine entsprechende Meldung an
-        // Zeige eine freundliche Nachricht wie: "Leider wurden keine Filme gefunden. Probieren Sie andere Filter."
+        if (empty($gefilterte_filme)) {
+            echo 'Leider wurden keine Filme gefunden. Probieren Sie andere Filter.';
+        }
         ?>
 
     </p>
