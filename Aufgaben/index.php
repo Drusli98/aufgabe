@@ -184,3 +184,5 @@ $gefilterte_filme = []; // TODO: Implementiere die Filterlogik hier
     </p>
 </body>
 </html>
+
+//
