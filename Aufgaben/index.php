@@ -89,10 +89,10 @@ $filme = [
 // - 'max_preis' (falls vorhanden) - maximaler Ticketpreis
 // - 'mindest_bewertung' (falls vorhanden)
 
-$genre_filter = $_GET['genre']??''; // TODO: Implementiere die $_GET Logik
-$max_dauer = 0; // TODO: Implementiere die $_GET Logik
-$max_preis = 0; // TODO: Implementiere die $_GET Logik
-$mindest_bewertung = 0; // TODO: Implementiere die $_GET Logik
+$genre_filter = isset($_GET['genre']) ? trim($_GET['genre']) : '';
+$max_dauer = isset($_GET['max_dauer']) ? (int)$_GET['max_dauer'] : 0;
+$max_preis = isset($_GET['max_preis']) ? (float)$_GET['max_preis'] : 0.0;
+$mindest_bewertung = isset($_GET['mindest_bewertung']) ? (int)$_GET['mindest_bewertung'] : 0;
 
 // TODO: Filtere das $filme Array basierend auf den GET-Parametern
 // Erstelle ein neues Array $gefilterte_filme
@@ -118,7 +118,31 @@ $mindest_bewertung = 0; // TODO: Implementiere die $_GET Logik
 //     }
 // }
 
-$gefilterte_filme = []; // TODO: Implementiere die Filterlogik hier
+$gefilterte_filme = [];
+
+foreach ($filme as $film) {
+    $erfuellt_filter = true;
+
+    if ($genre_filter !== '' && $film['genre'] !== $genre_filter) {
+        $erfuellt_filter = false;
+    }
+
+    if ($max_dauer > 0 && (int)$film['dauer'] > $max_dauer) {
+        $erfuellt_filter = false;
+    }
+
+    if ($max_preis > 0 && (float)$film['preis'] > $max_preis) {
+        $erfuellt_filter = false;
+    }
+
+    if ($mindest_bewertung > 0 && (int)$film['bewertung'] < $mindest_bewertung) {
+        $erfuellt_filter = false;
+    }
+
+    if ($erfuellt_filter) {
+        $gefilterte_filme[] = $film;
+    }
+}
 
 ?>
 
@@ -135,50 +159,95 @@ $gefilterte_filme = []; // TODO: Implementiere die Filterlogik hier
 
     <p>
         <h3>🔍 Filter</h3>
-        <!-- TODO: Erstelle ein HTML-Formular für die Filter -->
-        <!-- Das Formular soll folgende Eingabefelder haben:
-         1. Dropdown für Genre (name="genre")
-            - Optionen: "", "Action", "Komödie", "Drama", "Horror", "Animation"
-         2. Zahlenfeld für maximale Filmlänge in Minuten (name="max_dauer")
-         3. Zahlenfeld für maximalen Ticketpreis (name="max_preis", step="0.50")
-         4. Dropdown für Mindestbewertung (name="mindest_bewertung")
-            - Optionen: 0, 1, 2, 3, 4, 5
-         5. Submit-Button "Filter anwenden"
+        <form method="GET" action="">
+            <label for="genre">Genre:</label>
+            <select name="genre" id="genre">
+                <?php
+                $genres = ['', 'Action', 'Komödie', 'Drama', 'Horror', 'Animation'];
+                foreach ($genres as $g) {
+                    $label = $g === '' ? '' : $g;
+                    $selected = ($g === $genre_filter) ? ' selected' : '';
+                    echo '<option value="' . htmlspecialchars($g, ENT_QUOTES, 'UTF-8') . '"' . $selected . '>' . htmlspecialchars($label, ENT_QUOTES, 'UTF-8') . '</option>';
+                }
+                ?>
+            </select>
 
-         Wichtig:
-         - Verwende method="GET"
-         - Setze die value-Attribute der Felder auf die aktuellen Filterwerte
-         - Füge einen "Alle Filter zurücksetzen" Button hinzu
-        -->
+            <label for="max_dauer">Max. Dauer (Minuten):</label>
+            <input type="number" name="max_dauer" id="max_dauer" min="0" value="<?php echo $max_dauer > 0 ? (int)$max_dauer : ''; ?>">
+
+            <label for="max_preis">Max. Preis (€):</label>
+            <input type="number" name="max_preis" id="max_preis" min="0" step="0.50" value="<?php echo $max_preis > 0 ? number_format($max_preis, 2, '.', '') : ''; ?>">
+
+            <label for="mindest_bewertung">Mindestbewertung:</label>
+            <select name="mindest_bewertung" id="mindest_bewertung">
+                <?php
+                for ($i = 0; $i <= 5; $i++) {
+                    $selected = ($i === (int)$mindest_bewertung) ? ' selected' : '';
+                    echo '<option value="' . $i . '"' . $selected . '>' . $i . '</option>';
+                }
+                ?>
+            </select>
+
+            <button type="submit">Filter anwenden</button>
+            <a href="<?php echo htmlspecialchars($_SERVER['PHP_SELF'], ENT_QUOTES, 'UTF-8'); ?>">Alle Filter zurücksetzen</a>
+        </form>
 
     </p>
 
     <p>
         <?php
-        // TODO: Zeige die Anzahl der gefundenen Filme an
-        // Beispiel: "Es wurden X Filme gefunden"
+        echo 'Es wurden ' . count($gefilterte_filme) . ' Filme gefunden';
         ?>
 
 
+        <?php if (!empty($gefilterte_filme)): ?>
+            <?php foreach ($gefilterte_filme as $film): ?>
+                <?php
+                $titel = htmlspecialchars($film['titel'], ENT_QUOTES, 'UTF-8');
+                $genre = htmlspecialchars($film['genre'], ENT_QUOTES, 'UTF-8');
+                $dauerText = 'Dauer: ' . (int)$film['dauer'] . ' Min.';
+                $altersfreigabeText = 'FSK: ' . htmlspecialchars($film['altersfreigabe'], ENT_QUOTES, 'UTF-8');
+                $preisText = number_format((float)$film['preis'], 2, ',', '') . ' €';
+                $bewertung = (int)$film['bewertung'];
+                $sterne = str_repeat('★', $bewertung) . str_repeat('☆', 5 - $bewertung);
+                $genreFarbe = '#95a5a6';
+                $genreFarbeText = '#ffffff';
+                switch ($film['genre']) {
+                    case 'Action':
+                        $genreFarbe = '#e74c3c';
+                        break;
+                    case 'Komödie':
+                        $genreFarbe = '#f1c40f';
+                        $genreFarbeText = '#000000';
+                        break;
+                    case 'Drama':
+                        $genreFarbe = '#9b59b6';
+                        break;
+                    case 'Horror':
+                        $genreFarbe = '#2c3e50';
+                        break;
+                    case 'Animation':
+                        $genreFarbe = '#27ae60';
+                        break;
+                }
+                ?>
+                <div style="border: 1px solid #ddd; padding: 10px; margin: 10px 0; border-radius: 6px;">
+                    <h3 style="margin: 0 0 6px 0;"><?php echo $titel; ?></h3>
+                    <span style="display: inline-block; padding: 2px 8px; border-radius: 12px; background-color: <?php echo $genreFarbe; ?>; color: <?php echo $genreFarbeText; ?>; font-size: 12px; margin-bottom: 6px;">
+                        <?php echo $genre; ?>
+                    </span>
+                    <div><?php echo htmlspecialchars($dauerText, ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div><?php echo htmlspecialchars($altersfreigabeText, ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div><?php echo htmlspecialchars($preisText, ENT_QUOTES, 'UTF-8'); ?></div>
+                    <div style="font-size: 18px; color: #f1c40f;"><?php echo $sterne; ?></div>
+                </div>
+            <?php endforeach; ?>
+        <?php endif; ?>
+
         <?php
-        // TODO: Durchlaufe das $gefilterte_filme Array und zeige jeden Film an
-        // Verwende eine foreach-Schleife
-        //
-        // Für jeden Film sollen folgende Informationen angezeigt werden:
-        // - Titel des Films (als Überschrift h3)
-        // - Genre als farbiger Tag
-        // - Filmlänge (z.B. "Dauer: 120 Min.")
-        // - Altersfreigabe (z.B. "FSK: 12")
-        // - Ticketpreis (z.B. "9,50 €")
-        // - Bewertung als Sterne (★★★★☆)
-
-        // TODO: Implementiere die Ausgabe hier
-
-        ?>
-
-        <?php
-        // TODO: Falls keine Filme gefunden wurden, zeige eine entsprechende Meldung an
-        // Zeige eine freundliche Nachricht wie: "Leider wurden keine Filme gefunden. Probieren Sie andere Filter."
+        if (empty($gefilterte_filme)) {
+            echo '<p>Leider wurden keine Filme gefunden. Probieren Sie andere Filter.</p>';
+        }
         ?>
 
     </p>
